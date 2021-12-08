@@ -47,7 +47,7 @@
   ],
   "license": "BSD-3-Clause",
   "main": "./dist/src/Liqe.js",
-  "name": "liqe",
+  "name": "@deepdub/liqe",
   "repository": {
     "type": "git",
     "url": "git@github.com:gajus/liqe.git"
@@ -57,6 +57,7 @@
   },
   "scripts": {
     "watch": "npm-watch",
+    "prepack": "yarn run build",
     "benchmark": "ts-node --transpile-only test/benchmark.ts",
     "build": "del-cli ./dist && tsc",
     "compile-parser": "nearleyc src/grammar.ne --out ./src/grammar.ts",
