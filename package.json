@@ -4,6 +4,9 @@
     "name": "Gajus Kuizinas",
     "url": "http://gajus.com"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "ava": {
     "extensions": [
       "ts"
@@ -66,5 +69,5 @@
     "test": "NODE_ENV=test ava --serial --verbose"
   },
   "typings": "./dist/src/Liqe.d.ts",
-  "version": "1.0.0"
+  "version": "1.0.1"
 }
