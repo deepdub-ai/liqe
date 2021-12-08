@@ -30,12 +30,14 @@ const createRegexTest = (regexCache: RegExpCache, regex: string) => {
 export const createStringTest = (regexCache: RegExpCache, ast: HydratedAst) => {
   const query = ast.query;
 
-  if (!query) {
+  if (query === null || query === undefined) {
     throw new Error('Unexpected state.');
   }
 
   if (ast.regex) {
     return createRegexTest(regexCache, query);
+  } else if (query === '') {
+    return createRegexTest(regexCache, '/^$/');
   } else if (query.includes('*') && ast.quoted === false) {
     return createRegexTest(regexCache, String(convertWildcardToRegex(query)) + (ast.quoted ? 'u' : 'ui'));
   } else {

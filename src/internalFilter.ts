@@ -103,7 +103,7 @@ const testValue = (
     value,
   );
 
-  if (result) {
+  if (result !== false) {
     highlights.push({
       ...typeof result === 'string' && {keyword: result},
       path: path.join('.'),
@@ -112,9 +112,7 @@ const testValue = (
     return true;
   }
 
-  return Boolean(
-    result,
-  );
+  return result !== false;
 };
 
 const testField = <T extends Object>(
