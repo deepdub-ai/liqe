@@ -9,6 +9,7 @@
   },
   "root": true,
   "rules": {
-    "@typescript-eslint/no-parameter-properties": 0
+    "@typescript-eslint/no-parameter-properties": 0,
+    "@typescript-eslint/no-explicit-any": 0
   }
 }

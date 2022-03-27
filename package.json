@@ -25,6 +25,7 @@
   "description": "Lightweight and performant Lucene-like parser and search engine.",
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.1",
+    "@types/nearley": "^2.11.2",
     "@types/node": "^16.10.9",
     "@types/semver-compare": "^1.0.1",
     "@types/sinon": "^10.0.4",
@@ -69,5 +70,5 @@
     "test": "NODE_ENV=test ava --serial --verbose"
   },
   "typings": "./dist/src/Liqe.d.ts",
-  "version": "1.0.1"
+  "version": "1.0.2-alpha.23"
 }

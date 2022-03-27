@@ -7,8 +7,9 @@ main -> expr {% id %}
 
 @{%
 const opExpr = (operator) => {
-  return d => ({
+  return (d, l) => ({
     operator: operator,
+    loc: l,
     left: d[0],
     right: d[2]
   });
@@ -21,7 +22,7 @@ const notOp = (d) => {
   };
 }
 
-const unquotedValue = (d, location, reject) => {
+const unquotedValue = (d, l, reject) => {
   let query = d.join('');
 
   if (query === 'true') {
@@ -34,14 +35,16 @@ const unquotedValue = (d, location, reject) => {
 
   return {
     quoted: false,
+    loc: l,
     query,
   };
 }
 
 const range = ( minInclusive, maxInclusive) => {
-  return (d) => {
+  return (d, l) => {
     return {
       range: {
+        loc: l,
         min: d[2],
         minInclusive,
         maxInclusive,
@@ -51,12 +54,19 @@ const range = ( minInclusive, maxInclusive) => {
   };
 }
 
-const field = d => {
-  return {
-    field: d[0],
-    fieldPath: d[0].split('.').filter(Boolean),
-    ...d[3]
-  }
+// const field = (d, l) => {
+//   return {
+//     field: d[0],
+//     fieldLoc: l,
+//     fieldPath: d[0].split('.').filter(Boolean),
+//     ...d[3]
+//   }
+// };
+
+const parseDate = (d, l) => {
+	const [day, month, year] = d.join("").split("/")
+	const fullYear = year.length === 2 ? `20${year}` : year;
+	return new Date(`${fullYear}-${month}-${Number(day) + 1}`)
 };
 %}
 
@@ -71,7 +81,7 @@ two_op_expr ->
 
 pre_two_op_expr ->
     two_op_expr __ {% d => d[0] %}
-  | "(" _ two_op_expr _ ")" {% d => d[2] %}
+  | "(" _ two_op_expr _ ")" __ {% d => d[2] %}
 
 one_op_expr ->
     "(" _ two_op_expr _ ")" {% d => d[2] %}
@@ -80,7 +90,7 @@ one_op_expr ->
 
 post_one_op_expr ->
     __ one_op_expr {% d => d[1] %}
-  | "(" _ one_op_expr _ ")" {% d => d[2] %}
+  | __ "(" _ one_op_expr _ ")" {% d => d[3] %}
 
 boolean_primary ->
   side {% id %}
@@ -90,8 +100,23 @@ post_boolean_primary ->
   | __ boolean_primary {% d => d[1] %}
 
 side ->
-    field ":" _ query {% field %}
-  | query {% d => ({field: '<implicit>', ...d[0]}) %}
+    "type" ":" _ type_field_value {% d => ({fieldName: d[0], fieldValue: d[3] }) %}
+  | "created" ":" _ created_field_value {% d => ({fieldName: d[0], fieldValue: d[3] }) %}
+  | "age" ":" _ age_field_value {% d => ({fieldName: d[0], fieldValue: d[3] }) %}
+  # | query {% (d, l) => ({field: '<implicit>', loc: l, ...d[0]}) %}
+
+age_field_value ->
+    relational_operator _ decimal {% (d, l) => ({quoted: false, query: d[2], loc: l, relationalOperator: d[0][0]}) %}
+  | decimal {% (d, l) => ({quoted: false, loc: l, query: d.join('')}) %}
+  | range {% id %}
+
+type_field_value ->
+  "\"" "extract speakers" "\"" {% d => d[1] %}
+  | "\"" "generation" "\"" {% d => d[1] %}
+
+created_field_value ->
+    date {% d => d[0] %}
+  | date_range {% d => d[0] %}
 
 field ->
     [_a-zA-Z$] [a-zA-Z\d_$.]:* {% d => d[0] + d[1].join('') %}
@@ -99,20 +124,38 @@ field ->
   | dqstring {% id %}
 
 query ->
-    relational_operator _ decimal {% d => ({quoted: false, query: d[2], relationalOperator: d[0][0]}) %}
-  | decimal {% d => ({quoted: false, query: d.join('')}) %}
-  | regex {% d => ({quoted: false, regex: true, query: d.join('')}) %}
+    relational_operator _ decimal {% (d, l) => ({quoted: false, query: d[2], loc: l, relationalOperator: d[0][0]}) %}
+  | decimal {% (d, l) => ({quoted: false, loc: l, query: d.join('')}) %}
+  | regex {% (d, l) => ({quoted: false, loc: l, regex: true, query: d.join('')}) %}
   | range {% id %}
   | unquoted_value {% unquotedValue %}
-  | sqstring {% d => ({quoted: true, query: d.join('')}) %}
-  | dqstring {% d => ({quoted: true, query: d.join('')}) %}
+  | sqstring {% (d, l) => ({quoted: true, loc: l, query: d.join('')}) %}
+  | dqstring {% (d, l) => ({quoted: true, loc: l, query: d.join('')}) %}
 
 range ->
-    "[" _ decimal _ "TO" _ decimal _ "]" {% range(true, true) %}
-  | "{" _ decimal _ "TO" _ decimal _ "]" {% range(false, true) %}
-  | "[" _ decimal _ "TO" _ decimal _ "}" {% range(true, false) %}
-  | "{" _ decimal _ "TO" _ decimal _ "}" {% range(false, false) %}
-  
+    "[" _ range_decimal _ "TO" _ range_decimal _ "]" {% range(true, true) %}
+  | "{" _ range_decimal _ "TO" _ range_decimal _ "]" {% range(false, true) %}
+  | "[" _ range_decimal _ "TO" _ range_decimal _ "}" {% range(true, false) %}
+  | "{" _ range_decimal _ "TO" _ range_decimal _ "}" {% range(false, false) %}
+
+range_decimal ->
+    decimal {% (d, l) => ({ type: "decimal", value: d[0], loc: l }) %}
+
+date_range ->
+    "[" _ range_date _ "TO" _ range_date _ "]" {% range(true, true) %}
+  | "{" _ range_date _ "TO" _ range_date _ "]" {% range(false, true) %}
+  | "[" _ range_date _ "TO" _ range_date _ "}" {% range(true, false) %}
+  | "{" _ range_date _ "TO" _ range_date _ "}" {% range(false, false) %}
+
+range_date ->
+    date_range_date    {% (d, l) => ({ type: "date",    value: d[0], loc: l }) %}
+
+date ->
+	[0-9]:+ "/" [0-9]:+ "/" [0-9]:+ {% parseDate %}
+
+date_range_date ->
+	[0-9]:+ "/" [0-9]:+ "/" [0-9]:+ {% parseDate %}
+
 relational_operator ->
     "="
   | ">"
